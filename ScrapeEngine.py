@@ -120,4 +120,6 @@ def closeFile():
 
 async def closeSession():
     global session
-    await session.close()
+    if session != None:
+        await session.close()
+    else: return
