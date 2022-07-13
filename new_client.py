@@ -30,28 +30,55 @@ class ListEmptyException(Exception):
 
 
 async def startClient():
+    try:
+        File_Name = Dev.getFileName()
+        url = ""
+        url_list = redis.StrictRedis(host=HOST, port=PORT, db=DB)
+        store = redis.StrictRedis(host=HOST, port=PORT, db=Dev.getStoreDB())
+        sub=url_list.pubsub()
+        sub.subscribe("temp")
+        t=sub.get_message()
+        print(url_list.publish(channel="temp",message=Dev.getURL()))
+    except Exception as e:
+        errors = io.StringIO()
+        traceback.print_exc(file=errors)
+        contents = str(errors.getvalue())
+        print(contents)
+        errors.close()
+        print(e)
+        input()
+        return ()
+
     while True:
         try:
-            File_Name = Dev.getFileName()
-            url = ""
-            url_list = redis.StrictRedis(host=HOST, port=PORT, db=DB)
-            store = redis.StrictRedis(host=HOST, port=PORT, db=Dev.getStoreDB())
-            if not url_list.keys():  # List is empty
-                raise ListEmptyException
-            for key in url_list.keys():
-                if key.decode() == Dev:
-                    continue
-                if "Scrape" in key.decode():
-                    continue
-                if url_list.get(key).decode() == "false":
-                    url = key.decode()
-                    url_list.set(key, "true")
+            # if not url_list.keys():  # List is empty
+            #     raise ListEmptyException
+            # for key in url_list.keys():
+            #     if key.decode() == Dev:
+            #         continue
+            #     if "Scrape" in key.decode():
+            #         continue
+            #     if url_list.get(key).decode() == "false":
+            #         url = key.decode()
+            #         url_list.set(key, "true")
+            #         break
+            while True:
+                t=sub.get_message()
+                if t==None:
+                    print("All scrapped")
+                    await ScrapeEngine.closeSession()
+                    return
+                if t['data']!=1:
+                    url=t['data'].decode()
                     break
-            if url == "":
+                print(t)
+
+            print(url)
+            if url == "" or url==None:
                 print("All scrapped")
                 await ScrapeEngine.closeSession()
                 return
-            print("In client: " + url)
+            # print("In client: " + url)
             temp_name = getTempName(url)
             sub_list = []
 
@@ -74,7 +101,9 @@ async def startClient():
                         store.set(File_Name, pickle.dumps(FuncDic[key]))
                 else:
                     for url in FuncDic[key]:
-                        url_list.set(url, "false")
+                        # url_list.set(url, "false")
+                        url_list.publish(channel="temp",message=url)
+
 
             store.set(getTempName(url).replace("/", "_"), pickle.dumps(sub_list))
         except ListEmptyException as e:
@@ -110,3 +139,15 @@ if __name__ == "__main__":
         print(end - start)
     except Exception as e:
         print(e)
+        errors = io.StringIO()
+        traceback.print_exc(file=errors)
+        contents = str(errors.getvalue())
+        print(contents)
+        errors.close()
+        print(e)
+        input()
+
+# def schedule():
+#     publisher=redis.StrictRedis(host=HOST,port=PORT,db=0)
+#     publisher.publish(channel='URLs',key=Dev.getURL())
+    

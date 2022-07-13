@@ -1,5 +1,7 @@
 import ScrapeEngine
 
+def getChannelName():
+    return "URLs"
 def getURL():
     return 'https://dmoz-odp.org/Science/'
 
